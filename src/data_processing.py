@@ -2,6 +2,7 @@ import argparse
 import pandas as pd
 from adriana import *
 from extra_preprocessing import *
+
 def load_data(file_path):
     # TODO: Load data from CSV file
     df = pd.read_csv(file_path)
