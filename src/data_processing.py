@@ -14,13 +14,15 @@ def clean_data(data,file_type):
         energy_val = 'Load'
         
     # Convert the timestamp columns to datetime format
-    data['StartTime'] = pd.to_datetime(data['StartTime'].str.replace('Z',''), format='%Y-%m-%dT%H:%M%z')
-    data['EndTime'] = pd.to_datetime(data['EndTime'].str.replace('Z',''), format='%Y-%m-%dT%H:%M%z')
+    # data['StartTime'] = pd.to_datetime(data['StartTime'].str.replace('Z',''), format='%Y-%m-%dT%H:%M%z')
+    data['StartTime'] = pd.to_datetime(data['StartTime'].str.replace('+00:00Z',''), format='%Y-%m-%dT%H:%M%z')
+
+    data['EndTime'] = pd.to_datetime(data['EndTime'].str.replace('+00:00Z',''), format='%Y-%m-%dT%H:%M%z')
     # Ensure the data is sorted by time
     data = data.sort_values(by='StartTime')
     
-    cutoff_date = pd.Timestamp('2023-01-01')
-    data = data[data['EndTime'] <= cutoff_date]
+    #cutoff_date = pd.Timestamp('2023-01-01')
+    #data = data[data['EndTime'] <= cutoff_date]
 
     imputed_column = data[energy_val].copy()
     missing_indices = imputed_column.index[imputed_column.isna()]
@@ -93,7 +95,7 @@ def parse_arguments():
 def main():
     data_folder='../data/raw_data/'
     countries = ['HU','IT','PO','SP','UK','DE','DK','SE','NE']
-
+    start_time_array, end_time_array=get_hours_in_year()
     for country in countries:
         print('======================================================')
         print(country)
@@ -119,9 +121,7 @@ def main():
         load_file = get_load_file(country,'../data/clean_data/')
         load_df = pd.read_csv('../data/clean_data/'+load_file)
 
-        df_country_combined = pd.DataFrame(columns = [
-            'StartTime','EndTime', 'AreaID', 'UnitName'
-        ])
+        df_country_combined = pd.DataFrame(columns = ['StartTime','EndTime'])
 
         # add each generation source
         generation_files=get_generation_files(country, data_folder = '../data/clean_data/')
@@ -132,27 +132,30 @@ def main():
             # print(source_type)
             df.rename(columns={'quantity': 'quantity_'+ source_type}, inplace=True)
             df.drop(columns=['PsrType','UnitName', 'hourly_time', 'AreaID', 'EndTime'], inplace=True)
-            if i == 0:
-                df_country_combined = df
+            
+            
 
-            else:
-                #df_country_combined = pd.concat([df_country_combined, df['quantity_'+ source_type]], axis=1)
-                df_country_combined = pd.merge(left=df_country_combined, right=df,how='left',left_on='StartTime',right_on='StartTime')
+            df_country_combined['StartTime'] = start_time_array
+            df_country_combined['EndTime'] = end_time_array
+            #df_country_combined['StartTime'] = pd.to_datetime(df_country_combined['StartTime'], format='%Y-%m-%dT%H:%M%z')
+            #df_country_combined['EndTime'] = pd.to_datetime(df_country_combined['EndTime'], format='%Y-%m-%dT%H:%M%z')
+            #df_country_combined = pd.concat([df_country_combined, df['quantity_'+ source_type]], axis=1)
+            df_country_combined = pd.merge(left=df_country_combined, right=df[['StartTime', 'quantity_'+ source_type]],how='left',left_on='StartTime',right_on='StartTime')
 
-        df_country_combined.dropna(inplace=True)
+        #df_country_combined.dropna(inplace=True)
         # Aggregate the quantity columns into a new column 'total_quantity'
         df_country_combined['total_green_energy'] = df_country_combined.filter(like='quantity_').sum(axis=1)
 
         # add load column from the load file
-        df_country_combined = pd.concat([df_country_combined, load_df['Load']], axis=1)
-
+        #df_country_combined = pd.concat([df_country_combined, load_df['Load']], axis=1)
+        df_country_combined = pd.merge(left=df_country_combined, right=load_df[['StartTime', 'Load']],how='left',left_on='StartTime',right_on='StartTime')
         name_country_file = country + '_data' + '.csv'
 
         df_country_combined.to_csv(os.path.join('..','data','final_data', name_country_file), index=False)
 
-
+    print('_____Combining datasets of all countries_____')
     combined_df = pd.DataFrame()
-    folder = os.path.join('data', 'final_data')
+    folder = os.path.join('..','data', 'final_data')
     files = os.listdir(folder)
     files = [file for file in files if file!='data_def.csv']
 
@@ -167,7 +170,8 @@ def main():
                 'Load': country + '_Load'
             },inplace=True)
         else:
-            combined_df = pd.concat([combined_df, df_country[['total_green_energy', 'Load']]], axis=1)
+            #combined_df = pd.concat([combined_df, df_country[['total_green_energy', 'Load']]], axis=1)
+            combined_df = pd.merge(left=combined_df, right=df_country[['StartTime', 'total_green_energy' , 'Load']],how='left',left_on='StartTime',right_on='StartTime')
             combined_df.rename(columns={
                 'total_green_energy': 'green_energy_'+ country,
                 'Load': country + '_Load'
