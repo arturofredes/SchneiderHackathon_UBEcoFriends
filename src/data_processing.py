@@ -18,6 +18,9 @@ def clean_data(data,file_type):
     data['EndTime'] = pd.to_datetime(data['EndTime'].str.replace('Z',''), format='%Y-%m-%dT%H:%M%z')
     # Ensure the data is sorted by time
     data = data.sort_values(by='StartTime')
+    
+    cutoff_date = pd.Timestamp('2023-01-01')
+    data = data[data['EndTime'] <= cutoff_date]
 
     imputed_column = data[energy_val].copy()
     missing_indices = imputed_column.index[imputed_column.isna()]
