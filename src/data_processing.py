@@ -21,20 +21,20 @@ def clean_data(data,file_type):
     data = data.sort_values(by='StartTime')
 
     imputed_column = data[energy_val].copy()
-    
+
     # Iterate through the column
     for i in range(len(imputed_column)):
     # Check if the value is NaN
-    if pd.isna(imputed_column.iloc[i]):
-        # Find the nearest non-NaN values
-        previous_value = imputed_column.iloc[i - 1] if i > 0 and not pd.isna(imputed_column.iloc[i - 1]) else None
-        next_value = imputed_column.iloc[i + 1] if i < len(imputed_column) - 1 and not pd.isna(imputed_column.iloc[i + 1]) else None
-        
-        # Calculate the mean of the nearest non-NaN values
-        mean_value = (previous_value + next_value) / 2 if previous_value is not None and next_value is not None else (previous_value or next_value)
-        
-        # Update the imputed_column with the calculated mean value
-        imputed_column.iloc[i] = mean_value
+        if pd.isna(imputed_column.iloc[i]):
+            # Find the nearest non-NaN values
+            previous_value = imputed_column.iloc[i - 1] if i > 0 and not pd.isna(imputed_column.iloc[i - 1]) else None
+            next_value = imputed_column.iloc[i + 1] if i < len(imputed_column) - 1 and not pd.isna(imputed_column.iloc[i + 1]) else None
+            
+            # Calculate the mean of the nearest non-NaN values
+            mean_value = (previous_value + next_value) / 2 if previous_value is not None and next_value is not None else (previous_value or next_value)
+            
+            # Update the imputed_column with the calculated mean value
+            imputed_column.iloc[i] = mean_value
 
     # Update the original DataFrame with the imputed column
     data[energy_val] = imputed_column
