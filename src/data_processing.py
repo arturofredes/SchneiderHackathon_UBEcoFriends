@@ -70,21 +70,30 @@ def parse_arguments():
     )
     return parser.parse_args()
 
-def main(input_file, output_file):
-    data_folder='../data/raw_data'
-    countries=get_list_countries(data_folder=data_folder)
-    for i, country in countries:
-        gen_files=get_generation_files(country, data_folder = data_folder)
-        for file in gen_files:
-            df=load_data(file)
-            df=clean_data(df,'gen')
-            save_data(df, '../data/clean_data/'+file+'clean')
+def main():
+    data_folder='../data/raw_data/'
+    countries = ['HU','IT','PO','SP','UK','DE','DK','SE','NE']
 
-        load_file=get_load_file(country, data_folder = 'data')
-        df=load_data(load_file)
+    for country in countries:
+        print('======================================================')
+        print(country)
+        print('======================================================')
+        print('_____cleaning data_____')
+        gen_files=get_generation_files(country, data_folder = data_folder)
+        print('Generation files to be cleaned: ',gen_files)
+        for file in gen_files:
+            df=load_data(data_folder+file)
+            df=clean_data(df,'gen')
+            save_data(df, '../data/clean_data/'+file.replace('.csv','')+'clean.csv')
+        print('cleaned generation files')
+
+        load_file=get_load_file(country, data_folder = data_folder)
+        print('load file to be cleaned: ',load_file)
+        df=load_data(data_folder+load_file)
         df=clean_data(df,'Load')
-        save_data(df, '../data/clean_data/'+load_file+'clean')
+
+        save_data(df, '../data/clean_data/'+load_file.replace('.csv','')+'clean.csv')
 
 if __name__ == "__main__":
     args = parse_arguments()
-    main(args.input_file, args.output_file)
+    main()
