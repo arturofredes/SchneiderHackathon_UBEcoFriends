@@ -1,3 +1,8 @@
+import argparse
+import pandas as pd
+from adriana import *
+def load_data(file_path):
+    # TODO: Load data from CSV file
     df = pd.read_csv(file_path)
     return df
 
@@ -5,7 +10,12 @@
 def clean_data(data,file_type):
     if file_type == 'gen':
         energy_val = 'quantity'
-	@@ -21,37 +20,41 @@ def clean_data(data,file_type):
+    else:
+        energy_val = 'Load'
+        
+    # Convert the timestamp columns to datetime format
+    data['StartTime'] = pd.to_datetime(data['StartTime'].str.replace('Z',''), format='%Y-%m-%dT%H:%M%z')
+    data['EndTime'] = pd.to_datetime(data['EndTime'].str.replace('Z',''), format='%Y-%m-%dT%H:%M%z')
     # Ensure the data is sorted by time
     data = data.sort_values(by='StartTime')
 
@@ -43,7 +53,9 @@ def clean_data(data,file_type):
         return data_resampled
     else:
         print("Wrong")
-	@@ -63,7 +66,7 @@ def preprocess_data(df):
+        return data
+def preprocess_data(df):
+    # TODO: Generate new features, transform existing features, resampling, etc.
     return df_processed
 
 def save_data(df, output_file):
@@ -51,7 +63,18 @@ def save_data(df, output_file):
     pass
 
 def parse_arguments():
-	@@ -82,62 +85,21 @@ def parse_arguments():
+    parser = argparse.ArgumentParser(description='Data processing script for Energy Forecasting Hackathon')
+    parser.add_argument(
+        '--input_file',
+        type=str,
+        default='data/raw_data.csv',
+        help='Path to the raw data file to process'
+    )
+    parser.add_argument(
+        '--output_file', 
+        type=str, 
+        default='data/processed_data.csv', 
+        help='Path to save the processed data'
     )
     return parser.parse_args()
 
