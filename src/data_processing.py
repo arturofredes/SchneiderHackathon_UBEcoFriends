@@ -18,10 +18,22 @@ def clean_data(data,file_type):
     data['EndTime'] = pd.to_datetime(data['EndTime'].str.replace('Z',''), format='%Y-%m-%dT%H:%M%z')
     # Ensure the data is sorted by time
     data = data.sort_values(by='StartTime')
+    
+    cutoff_date = pd.Timestamp('2023-01-01')
+    data = data[data['EndTime'] <= cutoff_date]
 
-    # Impute missing values by taking the mean of the preceding and following values
-    data[energy_val].fillna((data[energy_val].shift() + data[energy_val].shift(-1)) / 2, inplace=True)
+    imputed_column = data[energy_val].copy()
+    missing_indices = imputed_column.index[imputed_column.isna()]
 
+    for i in missing_indices:
+        previous_value = imputed_column.iloc[i - 1] if i > 0 else None
+        next_value = imputed_column.iloc[i + 1] if i < len(imputed_column) - 1 else None
+
+        if pd.notna(previous_value) and pd.notna(next_value):
+            mean_value = (previous_value + next_value) / 2
+            imputed_column.iloc[i] = mean_value
+
+    data[energy_val] =imputed_column
     # Create a new column 'hourly_time' to represent the hourly level
     data['hourly_time'] = data['StartTime'].dt.floor('H')
 
@@ -119,7 +131,7 @@ def main():
             source_type = df['PsrType'][0]
             # print(source_type)
             df.rename(columns={'quantity': 'quantity_'+ source_type}, inplace=True)
-            df.drop(columns=['PsrType'], inplace=True)
+            df.drop(columns=['PsrType','UnitName', 'hourly_time', 'AreaID', 'EndTime'], inplace=True)
             if i == 0:
                 df_country_combined = df
 
