@@ -8,15 +8,15 @@ def load_data(file_path):
     return df
 
 
-def clean_data(data, file_type):
+def clean_df(data, file_type):
     if file_type == 'gen':
         energy_val = 'quantity'
     else:
         energy_val = 'Load'
         
     # Convert the timestamp columns to datetime format
-    data['StartTime'] = pd.to_datetime(data['StartTime'].str.replace('\+00:00Z', ''), regex=True).dt.strftime('%Y-%m-%d %H:%M:%S')
-    data['EndTime'] = pd.to_datetime(data['EndTime'].str.replace('\+00:00Z', ''), regex=True).dt.strftime('%Y-%m-%d %H:%M:%S')
+    data['StartTime'] = pd.to_datetime(data['StartTime'].str.replace('\+00:00Z', '', regex=True)).dt.strftime('%Y-%m-%d %H:%M:%S')
+    data['EndTime'] = pd.to_datetime(data['EndTime'].str.replace('\+00:00Z', '', regex=True)).dt.strftime('%Y-%m-%d %H:%M:%S')
     data['StartTime'] = pd.to_datetime(data['StartTime'])
     data['EndTime'] = pd.to_datetime(data['EndTime'])
     
@@ -71,68 +71,49 @@ def clean_data(data, file_type):
         print("Wrong")
         return data
     
-
-
-def preprocess_data(df):
-    # TODO: Generate new features, transform existing features, resampling, etc.
-    return df_processed
-
-def save_data(df, output_file):
-    df.to_csv(output_file, index=False)
-    pass
-
-def parse_arguments():
-    parser = argparse.ArgumentParser(description='Data processing script for Energy Forecasting Hackathon')
-    parser.add_argument(
-        '--input_file',
-        type=str,
-        default='data/raw_data.csv',
-        help='Path to the raw data file to process'
-    )
-    parser.add_argument(
-        '--output_file', 
-        type=str, 
-        default='data/processed_data.csv', 
-        help='Path to save the processed data'
-    )
-    return parser.parse_args()
-
-def main():
-
+def cleaning_pipeline():
     # raw_folder = '../data/raw_data/' 
     raw_folder = 'data/raw_data/' 
     countries = ['HU','IT','PO','SP','UK','DE','DK','SE','NE']
-    start_time_array, end_time_array = get_hours_in_year()
 
     for country in countries:
         print('======================================================')
         print(country)
         print('======================================================')
         print('_____cleaning data_____')
+
+        # generation files
         gen_files_paths = get_generation_files(country, data_folder = raw_folder)
         print('Generation files to be cleaned: ', gen_files_paths)
         for file_path in gen_files_paths:
             gen_df = load_data(file_path)
-            gen_df = clean_data(gen_df, 'gen')
+            gen_df = clean_df(gen_df, 'gen')
             save_data(gen_df, (file_path.replace('raw_data', 'clean_data')).replace('.csv', '')+'_clean.csv')
         print('cleaned generation files')
 
+        # load file
         load_file_path = get_load_file(country, data_folder = raw_folder)
         print('load file to be cleaned: ', load_file_path)
         load_df = load_data(load_file_path)
-        load_df = clean_data(load_df, 'Load')
+        load_df = clean_df(load_df, 'Load')
 
         save_data(load_df, (load_file_path.replace('raw_data', 'clean_data')).replace('.csv', '')+'_clean.csv')
 
+    print('Cleaned data for all countries')
 
-        # agregate country data in one df
-        print('_____aggregating data_____')
-        # clean_folder = '../data/clean_data/'
-        clean_folder = 'data/clean_data/'
 
-        load_file_path = get_load_file(country, clean_folder)
-        clean_load_df = pd.read_csv(load_file_path)
-        
+def agregate_data_within_country():
+
+    start_time_array, end_time_array = get_hours_in_year()
+    countries = ['HU','IT','PO','SP','UK','DE','DK','SE','NE']
+
+    print('_____aggregating data_____')
+    # clean_folder = '../data/clean_data/'
+    clean_folder = 'data/clean_data/'
+
+    for country in countries:
+        print('======================================================')
+        print(country)
         df_country_combined = pd.DataFrame(columns = ['StartTime','EndTime'])
 
         # add each generation source
@@ -156,7 +137,8 @@ def main():
         df_country_combined['total_green_energy'] = df_country_combined.filter(like='quantity_').sum(axis=1)
 
         # add load column from the load file
-        #df_country_combined = pd.concat([df_country_combined, load_df['Load']], axis=1)
+        load_file_path = get_load_file(country, clean_folder)
+        clean_load_df = pd.read_csv(load_file_path)
         df_country_combined = df_country_combined.merge(clean_load_df[['StartTime', 'Load']], how='left', on='StartTime')
         name_country_file = country + '_data' + '.csv'
 
@@ -164,6 +146,9 @@ def main():
         final_folder = os.path.join('data','final_data')
         df_country_combined.to_csv(os.path.join(final_folder, name_country_file), index=False)
 
+
+def agregate_data_among_countries():
+    final_folder = os.path.join('data','final_data')
     print('_____Combining datasets of all countries_____')
     # final_df = pd.DataFrame()
     final_files = os.listdir(final_folder)
@@ -174,7 +159,7 @@ def main():
         country = file_name[:2]
         # print(country)
         if i == 0:
-            final_df = df_country[['StartTime', 'EndTime',  'total_green_energy', 'Load']]
+            final_df = df_country[['StartTime', 'EndTime',  'total_green_energy', 'Load']].copy()
             final_df.rename(columns={
                 'total_green_energy': 'green_energy_'+ country,
                 'Load': country + '_Load'
@@ -187,7 +172,37 @@ def main():
                 'Load': country + '_Load'
             },inplace=True)
 
-    final_df.to_csv(os.path.join(final_folder, 'data_def.csv'), index=False)
+    path = os.path.join(final_folder, 'data_def.csv')
+    final_df.to_csv(path, index=False)
+    print(f'final dataset saved to {path}')
+
+    return final_df
+
+def save_data(df, output_file):
+    df.to_csv(output_file, index=False)
+    pass
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Data processing script for Energy Forecasting Hackathon')
+    parser.add_argument(
+        '--input_file',
+        type=str,
+        default='data/raw_data.csv',
+        help='Path to the raw data file to process'
+    )
+    parser.add_argument(
+        '--output_file', 
+        type=str, 
+        default='data/processed_data.csv', 
+        help='Path to save the processed data'
+    )
+    return parser.parse_args()
+
+def main():
+
+    cleaning_pipeline()
+    agregate_data_within_country()
+    agregate_data_among_countries()
 
 if __name__ == "__main__":
     args = parse_arguments()
