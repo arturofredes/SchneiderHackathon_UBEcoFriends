@@ -1,7 +1,7 @@
 import argparse
 import pandas as pd
 from adriana import *
-from extra_preprocessing import *
+
 def load_data(file_path):
     # TODO: Load data from CSV file
     df = pd.read_csv(file_path)
@@ -71,10 +71,19 @@ def parse_arguments():
     return parser.parse_args()
 
 def main(input_file, output_file):
-    df = load_data(input_file)
-    df_clean = clean_data(df)
-    df_processed = preprocess_data(df_clean)
-    save_data(df_processed, output_file)
+    data_folder='../data/raw_data'
+    countries=get_list_countries(data_folder=data_folder)
+    for i, country in countries:
+        gen_files=get_generation_files(country, data_folder = data_folder)
+        for file in gen_files:
+            df=load_data(file)
+            df=clean_data(df,'gen')
+            save_data(df, '../data/clean_data/'+file+'clean')
+
+        load_file=get_load_file(country, data_folder = 'data')
+        df=load_data(load_file)
+        df=clean_data(df,'Load')
+        save_data(df, '../data/clean_data/'+load_file+'clean')
 
 if __name__ == "__main__":
     args = parse_arguments()
