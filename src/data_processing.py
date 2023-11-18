@@ -1,16 +1,49 @@
 import argparse
 import pandas as pd
 from adriana import *
-
+from extra_preprocessing import *
 def load_data(file_path):
     # TODO: Load data from CSV file
     df = pd.read_csv(file_path)
     return df
 
-def clean_data(df):
-    # TODO: Handle missing values, outliers, etc.
 
-    return df_clean
+def clean_data(data,file_type):
+    if file_type == 'gen':
+        energy_val = 'quantity'
+    else:
+        energy_val = 'Load'
+        
+    # Convert the timestamp columns to datetime format
+    data['StartTime'] = pd.to_datetime(data['StartTime'].str.replace('Z',''), format='%Y-%m-%dT%H:%M%z')
+    data['EndTime'] = pd.to_datetime(data['EndTime'].str.replace('Z',''), format='%Y-%m-%dT%H:%M%z')
+
+    # Ensure the data is sorted by time
+    data = data.sort_values(by='StartTime')
+
+    # Impute missing values by taking the mean of the preceding and following values
+    data[energy_val].fillna((data[energy_val].shift() + data[energy_val].shift(-1)) / 2, inplace=True)
+
+    # Create a new column 'hourly_time' to represent the hourly level
+    data['hourly_time'] = data['StartTime'].dt.floor('H')
+
+    unique_units = data['UnitName'].unique()
+
+    if len(extract_unit_names(data)[0]) == 1:
+        # Resample the data to an hourly level, preserving all columns
+        data_resampled = data.set_index('StartTime').resample('1H').agg({
+            'EndTime': 'last',
+            'AreaID': 'first',
+            'UnitName': 'first',
+            energy_val: 'sum',
+            'hourly_time': 'last'
+        }).reset_index()
+        
+        data_resampled = data_resampled.groupby('StartTime')[energy_val].sum().reset_index()
+        return data_resampled
+    else:
+        print("Wrong")
+        return data
 
 def preprocess_data(df):
     # TODO: Generate new features, transform existing features, resampling, etc.
