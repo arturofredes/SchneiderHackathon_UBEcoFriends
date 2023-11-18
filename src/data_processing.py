@@ -1,6 +1,6 @@
 import argparse
 import pandas as pd
-from adriana import *
+from utils_2 import *
 def load_data(file_path):
     # TODO: Load data from CSV file
     df = pd.read_csv(file_path)
@@ -113,6 +113,7 @@ def main():
 
         # add each generation source
         generation_files=get_generation_files(country, data_folder = '../data/clean_data/')
+        print('Data to be merged: ',generation_files)
         for i, file in enumerate(generation_files):
             df = pd.read_csv('../data/clean_data/'+file)
             source_type = df['PsrType'][0]
@@ -123,8 +124,10 @@ def main():
                 df_country_combined = df
 
             else:
-                df_country_combined = pd.concat([df_country_combined, df['quantity_'+ source_type]], axis=1)
+                #df_country_combined = pd.concat([df_country_combined, df['quantity_'+ source_type]], axis=1)
+                df_country_combined = pd.merge(left=df_country_combined, right=df,how='left',left_on='StartTime',right_on='StartTime')
 
+        df_country_combined.dropna(inplace=True)
         # Aggregate the quantity columns into a new column 'total_quantity'
         df_country_combined['total_green_energy'] = df_country_combined.filter(like='quantity_').sum(axis=1)
 
