@@ -30,7 +30,7 @@ def get_load_data_from_entsoe(regions, periodStart='202302240000', periodEnd='20
         response_content = perform_get_request(url, params)
 
         # Response content is a string of XML data
-        df = xml_to_load_dataframe(response_content, 'Load')
+        df = xml_to_load_dataframe(response_content)
 
         # Save the DataFrame to a CSV file
         df.to_csv(f'{output_path}/load_{region}.csv', index=False)
@@ -80,7 +80,7 @@ def parse_arguments():
     parser.add_argument(
         '--start_time', 
         type=lambda s: datetime.datetime.strptime(s, '%Y-%m-%d'), 
-        default=datetime.datetime(2023, 1, 1), 
+        default=datetime.datetime(2022, 1, 1), 
         help='Start time for the data to download, format: YYYY-MM-DD'
     )
     parser.add_argument(
