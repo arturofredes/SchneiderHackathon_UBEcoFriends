@@ -29,7 +29,7 @@ def clean_data(data,file_type):
 
     unique_units = data['UnitName'].unique()
 
-    if len(extract_unit_names(data)[0]) == 1:
+    if len(unique_units) == 1:
         # Resample the data to an hourly level, preserving all columns
         data_resampled = data.set_index('StartTime').resample('1H').agg({
             'EndTime': 'last',
