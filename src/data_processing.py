@@ -1,7 +1,9 @@
 import argparse
-import pandas as pd
+import pandas
+
 def load_data(file_path):
-    df=pd.read_csv(filepah)
+    # TODO: Load data from CSV file
+    df = pd.read_csv(file_path)
     return df
 
 def clean_data(df):
