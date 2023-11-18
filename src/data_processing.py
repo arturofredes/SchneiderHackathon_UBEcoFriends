@@ -7,7 +7,6 @@ def load_data(file_path):
     df = pd.read_csv(file_path)
     return df
 
-
 def clean_data(data,file_type):
     if file_type == 'gen':
         energy_val = 'quantity'
@@ -21,37 +20,41 @@ def clean_data(data,file_type):
     # Ensure the data is sorted by time
     data = data.sort_values(by='StartTime')
 
-    # Impute missing values by taking the mean of the preceding and following values
-    data[energy_val].fillna((data[energy_val].shift() + data[energy_val].shift(-1)) / 2, inplace=True)
+    imputed_column = data[energy_val].copy()
+    
+    # Iterate through the column
+    for i in range(len(imputed_column)):
+    # Check if the value is NaN
+    if pd.isna(imputed_column.iloc[i]):
+        # Find the nearest non-NaN values
+        previous_value = imputed_column.iloc[i - 1] if i > 0 and not pd.isna(imputed_column.iloc[i - 1]) else None
+        next_value = imputed_column.iloc[i + 1] if i < len(imputed_column) - 1 and not pd.isna(imputed_column.iloc[i + 1]) else None
+        
+        # Calculate the mean of the nearest non-NaN values
+        mean_value = (previous_value + next_value) / 2 if previous_value is not None and next_value is not None else (previous_value or next_value)
+        
+        # Update the imputed_column with the calculated mean value
+        imputed_column.iloc[i] = mean_value
+
+    # Update the original DataFrame with the imputed column
+    data[energy_val] = imputed_column
 
     # Create a new column 'hourly_time' to represent the hourly level
     data['hourly_time'] = data['StartTime'].dt.floor('H')
 
     unique_units = data['UnitName'].unique()
-    #print(unique_units)
+
     if len(unique_units) == 1:
-        if file_type == 'gen':
-            # Resample the data to an hourly level, preserving all columns
-            data_resampled = data.set_index('StartTime').resample('1H').agg({
-                'EndTime': 'last',
-                'AreaID': 'first',
-                'UnitName': 'first',
-                'PsrType': 'first',
-                energy_val: 'sum',
-                'hourly_time': 'last'
-            }).reset_index()            
-            
-        else:
-            # Resample the data to an hourly level, preserving all columns
-            data_resampled = data.set_index('StartTime').resample('1H').agg({
-                'EndTime': 'last',
-                'AreaID': 'first',
-                'UnitName': 'first',
-                energy_val: 'sum',
-                'hourly_time': 'last'
-            }).reset_index()
+        # Resample the data to an hourly level, preserving all columns
+        data_resampled = data.set_index('StartTime').resample('1H').agg({
+            'EndTime': 'last',
+            'AreaID': 'first',
+            'UnitName': 'first',
+            energy_val: 'sum',
+            'hourly_time': 'last'
+        }).reset_index()
         
-       # data_resampled = data_resampled.groupby('StartTime')[energy_val].sum().reset_index()
+        data_resampled = data_resampled.groupby('StartTime')[energy_val].sum().reset_index()
         return data_resampled
     else:
         print("Wrong")
@@ -63,7 +66,7 @@ def preprocess_data(df):
     return df_processed
 
 def save_data(df, output_file):
-    df.to_csv(output_file, index=False)
+    df.to_csv(output_file)
     pass
 
 def parse_arguments():
@@ -82,29 +85,20 @@ def parse_arguments():
     )
     return parser.parse_args()
 
-def main():
-    data_folder='../data/raw_data/'
-    countries = ['HU','IT','PO','SP','UK','DE','DK','SE','NE']
-
-    for country in countries:
-        print('======================================================')
-        print(country)
-        print('======================================================')
-        print('_____cleaning data_____')
+def main(input_file, output_file):
+    data_folder='../data/raw_data'
+    countries=get_list_countries(data_folder=data_folder)
+    for i, country in countries:
         gen_files=get_generation_files(country, data_folder = data_folder)
-        print('Generation files to be cleaned: ',gen_files)
         for file in gen_files:
-            df=load_data(data_folder+file)
+            df=load_data(file)
             df=clean_data(df,'gen')
-            save_data(df, '../data/clean_data/'+file.replace('.csv','')+'_clean.csv')
-        print('cleaned generation files')
+            save_data(df, '../data/clean_data/'+file+'clean')
 
-        load_file=get_load_file(country, data_folder = data_folder)
-        print('load file to be cleaned: ',load_file)
-        df=load_data(data_folder+load_file)
+        load_file=get_load_file(country, data_folder = 'data')
+        df=load_data(load_file)
         df=clean_data(df,'Load')
-
-        save_data(df, '../data/clean_data/'+load_file.replace('.csv','')+'_clean.csv')
+        save_data(df, '../data/clean_data/'+load_file+'clean')
 
 
         print('_____aggregating data_____')
@@ -165,4 +159,4 @@ def main():
 
 if __name__ == "__main__":
     args = parse_arguments()
-    main()
+    main(args.input_file, args.output_file)
