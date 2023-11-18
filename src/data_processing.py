@@ -28,18 +28,30 @@ def clean_data(data,file_type):
     data['hourly_time'] = data['StartTime'].dt.floor('H')
 
     unique_units = data['UnitName'].unique()
-
+    #print(unique_units)
     if len(unique_units) == 1:
-        # Resample the data to an hourly level, preserving all columns
-        data_resampled = data.set_index('StartTime').resample('1H').agg({
-            'EndTime': 'last',
-            'AreaID': 'first',
-            'UnitName': 'first',
-            energy_val: 'sum',
-            'hourly_time': 'last'
-        }).reset_index()
+        if file_type == 'gen':
+            # Resample the data to an hourly level, preserving all columns
+            data_resampled = data.set_index('StartTime').resample('1H').agg({
+                'EndTime': 'last',
+                'AreaID': 'first',
+                'UnitName': 'first',
+                'PsrType': 'first',
+                energy_val: 'sum',
+                'hourly_time': 'last'
+            }).reset_index()            
+            
+        else:
+            # Resample the data to an hourly level, preserving all columns
+            data_resampled = data.set_index('StartTime').resample('1H').agg({
+                'EndTime': 'last',
+                'AreaID': 'first',
+                'UnitName': 'first',
+                energy_val: 'sum',
+                'hourly_time': 'last'
+            }).reset_index()
         
-        data_resampled = data_resampled.groupby('StartTime')[energy_val].sum().reset_index()
+       # data_resampled = data_resampled.groupby('StartTime')[energy_val].sum().reset_index()
         return data_resampled
     else:
         print("Wrong")
@@ -51,7 +63,7 @@ def preprocess_data(df):
     return df_processed
 
 def save_data(df, output_file):
-    df.to_csv(output_file)
+    df.to_csv(output_file, index=False)
     pass
 
 def parse_arguments():
@@ -84,7 +96,7 @@ def main():
         for file in gen_files:
             df=load_data(data_folder+file)
             df=clean_data(df,'gen')
-            save_data(df, '../data/clean_data/'+file.replace('.csv','')+'clean.csv')
+            save_data(df, '../data/clean_data/'+file.replace('.csv','')+'_clean.csv')
         print('cleaned generation files')
 
         load_file=get_load_file(country, data_folder = data_folder)
@@ -92,8 +104,40 @@ def main():
         df=load_data(data_folder+load_file)
         df=clean_data(df,'Load')
 
-        save_data(df, '../data/clean_data/'+load_file.replace('.csv','')+'clean.csv')
+        save_data(df, '../data/clean_data/'+load_file.replace('.csv','')+'_clean.csv')
 
+
+        print('_____aggregating data_____')
+        load_file = get_load_file(country,'../data/clean_data/')
+        load_df = pd.read_csv('../data/clean_data/'+load_file)
+
+        df_country_combined = pd.DataFrame(columns = [
+            'StartTime','EndTime', 'AreaID', 'UnitName'
+        ])
+
+        # add each generation source
+        generation_files=get_generation_files(country, data_folder = '../data/clean_data/')
+        for i, file in enumerate(generation_files):
+            df = pd.read_csv('../data/clean_data/'+file)
+            source_type = df['PsrType'][0]
+            # print(source_type)
+            df.rename(columns={'quantity': 'quantity_'+ source_type}, inplace=True)
+            df.drop(columns=['PsrType'], inplace=True)
+            if i == 0:
+                df_country_combined = df
+
+            else:
+                df_country_combined = pd.concat([df_country_combined, df['quantity_'+ source_type]], axis=1)
+
+        # Aggregate the quantity columns into a new column 'total_quantity'
+        df_country_combined['total_green_energy'] = df_country_combined.filter(like='quantity_').sum(axis=1)
+
+        # add load column from the load file
+        df_country_combined = pd.concat([df_country_combined, load_df['Load']], axis=1)
+
+        name_country_file = country + '_data' + '.csv'
+
+        df_country_combined.to_csv(os.path.join('..','data','final_data', name_country_file), index=False)
 if __name__ == "__main__":
     args = parse_arguments()
     main()
