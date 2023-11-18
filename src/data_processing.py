@@ -51,7 +51,7 @@ def preprocess_data(df):
     return df_processed
 
 def save_data(df, output_file):
-    # TODO: Save processed data to a CSV file
+    df.to_csv(output_file)
     pass
 
 def parse_arguments():
