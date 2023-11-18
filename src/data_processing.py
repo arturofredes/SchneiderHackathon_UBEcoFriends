@@ -1,6 +1,6 @@
 import argparse
 import pandas as pd
-from adriana import *
+from utils_2 import *
 
 def load_data(file_path):
     # TODO: Load data from CSV file
@@ -99,6 +99,63 @@ def main(input_file, output_file):
         df=load_data(load_file)
         df=clean_data(df,'Load')
         save_data(df, '../data/clean_data/'+load_file+'clean')
+
+
+        print('_____aggregating data_____')
+        load_file = get_load_file(country,'../data/clean_data/')
+        load_df = pd.read_csv('../data/clean_data/'+load_file)
+
+        df_country_combined = pd.DataFrame(columns = [
+            'StartTime','EndTime', 'AreaID', 'UnitName'
+        ])
+
+        # add each generation source
+        generation_files=get_generation_files(country, data_folder = '../data/clean_data/')
+        for i, file in enumerate(generation_files):
+            df = pd.read_csv('../data/clean_data/'+file)
+            source_type = df['PsrType'][0]
+            # print(source_type)
+            df.rename(columns={'quantity': 'quantity_'+ source_type}, inplace=True)
+            df.drop(columns=['PsrType'], inplace=True)
+            if i == 0:
+                df_country_combined = df
+
+            else:
+                df_country_combined = pd.concat([df_country_combined, df['quantity_'+ source_type]], axis=1)
+
+        # Aggregate the quantity columns into a new column 'total_quantity'
+        df_country_combined['total_green_energy'] = df_country_combined.filter(like='quantity_').sum(axis=1)
+
+        # add load column from the load file
+        df_country_combined = pd.concat([df_country_combined, load_df['Load']], axis=1)
+
+        name_country_file = country + '_data' + '.csv'
+
+        df_country_combined.to_csv(os.path.join('..','data','final_data', name_country_file), index=False)
+
+        combined_df = pd.DataFrame()
+        folder = os.path.join('data', 'final_data')
+        files = os.listdir(folder)
+        files = [file for file in files if file!='data_def.csv']
+
+        for i, file in enumerate(files):
+            df_country = pd.read_csv(os.path.join(folder, file))
+            country = file[:2]
+            # print(country)
+            if i == 0:
+                combined_df = df_country[['StartTime', 'EndTime',  'total_green_energy', 'Load']]
+                combined_df.rename(columns={
+                    'total_green_energy': 'green_energy_'+ country,
+                    'Load': country + '_Load'
+                },inplace=True)
+            else:
+                combined_df = pd.concat([combined_df, df_country[['total_green_energy', 'Load']]], axis=1)
+                combined_df.rename(columns={
+                    'total_green_energy': 'green_energy_'+ country,
+                    'Load': country + '_Load'
+                },inplace=True)
+
+        combined_df.to_csv(os.path.join(folder, 'data_def.csv'), index=False)
 
 if __name__ == "__main__":
     args = parse_arguments()
