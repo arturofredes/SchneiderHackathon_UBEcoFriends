@@ -1,5 +1,6 @@
 import argparse
-import pandas
+import pandas as pd
+from adriana import *
 
 def load_data(file_path):
     # TODO: Load data from CSV file
