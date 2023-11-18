@@ -1,6 +1,6 @@
 import argparse
 import pandas as pd
-from adriana import *
+from utils_2 import *
 
 def load_data(file_path):
     # TODO: Load data from CSV file
@@ -138,6 +138,31 @@ def main():
         name_country_file = country + '_data' + '.csv'
 
         df_country_combined.to_csv(os.path.join('..','data','final_data', name_country_file), index=False)
+
+        combined_df = pd.DataFrame()
+        folder = os.path.join('data', 'final_data')
+        files = os.listdir(folder)
+        files = [file for file in files if file!='data_def.csv']
+
+        for i, file in enumerate(files):
+            df_country = pd.read_csv(os.path.join(folder, file))
+            country = file[:2]
+            # print(country)
+            if i == 0:
+                combined_df = df_country[['StartTime', 'EndTime',  'total_green_energy', 'Load']]
+                combined_df.rename(columns={
+                    'total_green_energy': 'green_energy_'+ country,
+                    'Load': country + '_Load'
+                },inplace=True)
+            else:
+                combined_df = pd.concat([combined_df, df_country[['total_green_energy', 'Load']]], axis=1)
+                combined_df.rename(columns={
+                    'total_green_energy': 'green_energy_'+ country,
+                    'Load': country + '_Load'
+                },inplace=True)
+
+        combined_df.to_csv(os.path.join(folder, 'data_def.csv'), index=False)
+
 if __name__ == "__main__":
     args = parse_arguments()
     main()
