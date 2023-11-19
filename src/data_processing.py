@@ -37,7 +37,7 @@ def clean_df(data, file_type):
             mean_value = (previous_value + next_value) / 2
             imputed_column.iloc[i] = mean_value
 
-    data[energy_val] =imputed_column
+    data[energy_val] = imputed_column
     # Create a new column 'hourly_time' to represent the hourly level
     data['hourly_time'] = data['StartTime'].dt.floor('H')
 
