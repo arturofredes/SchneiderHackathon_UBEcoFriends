@@ -12,7 +12,6 @@ def fill_area_code(df):
     
     return df
         
-
 def read_and_concatenate(folder_path):
     # Lists to store DataFrames
     gen_dataframes = []
@@ -61,12 +60,15 @@ def read_and_concatenate(folder_path):
 
     return combined_dataframe
 
+import pandas as pd
+import numpy as np
 
 def further_processing(df):
-    # change date format
     print('=====================================')
     print('Further processing')   
     print('=====================================')
+
+    # change date format
     df['StartTime'] = pd.to_datetime(df['StartTime'].str.replace('\+00:00Z', '', regex=True)).dt.strftime('%Y-%m-%d %H:%M:%S')
     df['EndTime'] = pd.to_datetime(df['EndTime'].str.replace('\+00:00Z', '', regex=True)).dt.strftime('%Y-%m-%d %H:%M:%S')
     df['StartTime'] = pd.to_datetime(df['StartTime'])
@@ -98,11 +100,14 @@ def further_processing(df):
     aggregated_data = df.groupby(['AreaID', 'gen/load', 'Date', 'Hour'])['power'].sum().reset_index()
     aggregated_data['concatenated'] = aggregated_data['AreaID']  + aggregated_data['gen/load']
 
+    # Extract country from the 'concatenated' column
+    aggregated_data['Country'] = aggregated_data['concatenated'].str[:-4]
+
     pivot = aggregated_data.pivot_table(
-    index=['Date', 'Hour'],
-    columns=['concatenated'],
-    values='power',
-    aggfunc='sum'
+        index=['Date', 'Hour'],
+        columns=['concatenated'],
+        values='power',
+        aggfunc='sum'
     )
 
     # Replace zeros with NaN
@@ -111,7 +116,36 @@ def further_processing(df):
     # Drop rows where all elements are NaN
     pivot.dropna(how='all', inplace=True)
 
-    #pivot=pivot.reset_index()
+    # Define European dates for seasons
+    spring_start = pd.to_datetime('2023-03-21')
+    summer_start = pd.to_datetime('2023-06-21')
+    autumn_start = pd.to_datetime('2023-09-22')
+    winter_start = pd.to_datetime('2023-12-21')
+
+    # Explicitly define bin edges and labels
+    bin_edges = [pd.Timestamp.min, spring_start, summer_start, autumn_start, winter_start, pd.Timestamp.max]
+    labels = ['min_to_spring', 'spring', 'summer', 'autumn', 'winter']
+
+    # Create a new column 'season' based on the defined seasons
+    pivot['season'] = pd.cut(
+        pivot['Date'],
+        bins=bin_edges,
+        labels=labels,
+        right=False
+    )
+
+    pivot['season'] = pivot['season'].replace('min_to_spring', 'winter')
+
+    # One-hot encode the 'season' column
+    pivot = pd.get_dummies(pivot, columns=['season'], drop_first=True)
+
+    # Extract day of the week and create 'weekend' column
+    pivot['day_of_week'] = pivot['Date'].dt.dayofweek
+    pivot['is_weekend'] = pd.get_dummies(pivot['day_of_week'].isin([5, 6]).astype(int), drop_first=True)
+
+    # Extract 'Country' feature from the 'concatenated' column
+    pivot['Country'] = pivot['concatenated'].str[:-4]
+
     pivot['Date'] = pd.to_datetime(pivot['Date'])
     pivot = pivot[pivot['Date'].dt.year == 2022]
 
