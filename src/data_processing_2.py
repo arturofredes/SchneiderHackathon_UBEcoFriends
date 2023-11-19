@@ -110,6 +110,8 @@ def further_processing(df):
     pivot.dropna(how='all', inplace=True)
     pivot = pivot.reset_index()
 
+
+
     pivot['Date'] = pd.to_datetime(pivot['Date'])
     pivot = pivot[pivot['Date'].dt.year == 2022]
 
