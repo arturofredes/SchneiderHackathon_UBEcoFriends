@@ -115,7 +115,7 @@ def further_processing(df):
     pivot['Date'] = pd.to_datetime(pivot['Date'])
     pivot = pivot[pivot['Date'].dt.year == 2022]
 
-    pivot.to_csv('../data/final_data.csv')
+    pivot.to_csv('../data/final_data.csv', index=False)
     print('=====================================')
     print('Pivot df saved to final_data')   
     print('=====================================')
