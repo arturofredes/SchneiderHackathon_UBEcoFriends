@@ -152,7 +152,7 @@ def agregate_data_among_countries():
     print('_____Combining datasets of all countries_____')
     # final_df = pd.DataFrame()
     final_files = os.listdir(final_folder)
-    final_files = [file for file in final_files if file!='data_def.csv']
+    final_files = [file for file in final_files if file!='data_merged.csv']
 
     for i, file_name in enumerate(final_files):
         df_country = pd.read_csv(os.path.join(final_folder, file_name))
@@ -172,11 +172,48 @@ def agregate_data_among_countries():
                 'Load': country + '_Load'
             },inplace=True)
 
-    path = os.path.join(final_folder, 'data_def.csv')
+    path = os.path.join(final_folder, 'data_merged.csv')
     final_df.to_csv(path, index=False)
     print(f'final dataset saved to {path}')
 
     return final_df
+
+def extract_features():
+    folder_path = 'final_folder'
+    filename = 'data_merged.csv'
+    file_path = os.path.join(folder_path, filename)
+    data = pd.read_csv(file_path)
+
+    print('_____CExtracting features_____')
+
+    # Extract hour of the day
+    data['hour_of_day'] = data['StartTime'].dt.hour
+
+    # Define European dates for seasons
+    spring_start = pd.to_datetime('2023-03-21')
+    summer_start = pd.to_datetime('2023-06-21')
+    autumn_start = pd.to_datetime('2023-09-22')
+    winter_start = pd.to_datetime('2023-12-21')
+
+    # Create a new column 'season' based on the defined seasons
+    data['season'] = pd.cut(
+        data['StartTime'],
+        bins=[pd.Timestamp.min, spring_start, summer_start, autumn_start, winter_start, pd.Timestamp.max],
+        labels=['winter', 'spring', 'summer', 'autumn', 'winter'],
+        right=False
+    )
+
+    # One-hot encode the 'season' column
+    data = pd.get_dummies(data, columns=['season'], drop_first=True)
+
+    # Extract day of the week and create 'weekend' column
+    data['day_of_week'] = data['StartTime'].dt.dayofweek
+    data['is_weekend'] = pd.get_dummies(data['day_of_week'].isin([5, 6]).astype(int), drop_first=True)
+
+    output_path = os.path.join(folder_path, 'data_extracted.csv')
+    data.to_csv(output_path, index=False)
+
+    return data
 
 def save_data(df, output_file):
     df.to_csv(output_file, index=False)
@@ -203,6 +240,7 @@ def main():
     cleaning_pipeline()
     agregate_data_within_country()
     agregate_data_among_countries()
+    extract_features()
 
 if __name__ == "__main__":
     args = parse_arguments()
