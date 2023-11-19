@@ -1,4 +1,3 @@
-# fill the area id column
 import os 
 import pandas as pd
 import numpy as np
@@ -7,7 +6,7 @@ def fill_area_code(df):
 
     df['AreaID'].dropna(inplace=True)
     cn_id = df['AreaID'][0]
-    print(cn_id)
+    #print(cn_id)
     df['AreaID'] = cn_id
     
     return df
@@ -60,9 +59,6 @@ def read_and_concatenate(folder_path):
 
     return combined_dataframe
 
-import pandas as pd
-import numpy as np
-
 def further_processing(df):
     print('=====================================')
     print('Further processing')   
@@ -100,8 +96,6 @@ def further_processing(df):
     aggregated_data = df.groupby(['AreaID', 'gen/load', 'Date', 'Hour'])['power'].sum().reset_index()
     aggregated_data['concatenated'] = aggregated_data['AreaID']  + aggregated_data['gen/load']
 
-    # Extract country from the 'concatenated' column
-    aggregated_data['Country'] = aggregated_data['concatenated'].str[:-4]
 
     pivot = aggregated_data.pivot_table(
         index=['Date', 'Hour'],
@@ -110,44 +104,56 @@ def further_processing(df):
         aggfunc='sum'
     )
 
+    pivot = pivot.reset_index()
+
     # Replace zeros with NaN
     pivot.replace(0, np.nan, inplace=True)
 
     # Drop rows where all elements are NaN
     pivot.dropna(how='all', inplace=True)
 
-    # Define European dates for seasons
-    spring_start = pd.to_datetime('2023-03-21')
-    summer_start = pd.to_datetime('2023-06-21')
-    autumn_start = pd.to_datetime('2023-09-22')
-    winter_start = pd.to_datetime('2023-12-21')
-
-    # Explicitly define bin edges and labels
-    bin_edges = [pd.Timestamp.min, spring_start, summer_start, autumn_start, winter_start, pd.Timestamp.max]
-    labels = ['min_to_spring', 'spring', 'summer', 'autumn', 'winter']
-
-    # Create a new column 'season' based on the defined seasons
-    pivot['season'] = pd.cut(
-        pivot['Date'],
-        bins=bin_edges,
-        labels=labels,
-        right=False
-    )
-
-    pivot['season'] = pivot['season'].replace('min_to_spring', 'winter')
-
-    # One-hot encode the 'season' column
-    pivot = pd.get_dummies(pivot, columns=['season'], drop_first=True)
-
-    # Extract day of the week and create 'weekend' column
-    pivot['day_of_week'] = pivot['Date'].dt.dayofweek
-    pivot['is_weekend'] = pd.get_dummies(pivot['day_of_week'].isin([5, 6]).astype(int), drop_first=True)
-
-    # Extract 'Country' feature from the 'concatenated' column
-    pivot['Country'] = pivot['concatenated'].str[:-4]
-
     pivot['Date'] = pd.to_datetime(pivot['Date'])
     pivot = pivot[pivot['Date'].dt.year == 2022]
+
+    # Define European dates for seasons
+    spring_start = pd.to_datetime('2022-03-21')
+    summer_start = pd.to_datetime('2022-06-21')
+    autumn_start = pd.to_datetime('2022-09-22')
+    winter_start = pd.to_datetime('2022-12-21')
+
+    # Create a new column 'season' based on the defined seasons
+    pivot['season'] = 'winter'  # Default to winter
+
+    # Set conditions for other seasons
+    spring_condition = (pivot['Date'] >= spring_start) & (pivot['Date'] < summer_start)
+    summer_condition = (pivot['Date'] >= summer_start) & (pivot['Date'] < autumn_start)
+    autumn_condition = (pivot['Date'] >= autumn_start) & (pivot['Date'] < winter_start)
+
+    # Update 'season' based on conditions
+    pivot.loc[spring_condition, 'season'] = 'spring'
+    pivot.loc[summer_condition, 'season'] = 'summer'
+    pivot.loc[autumn_condition, 'season'] = 'autumn'
+
+    pivot['season'] = pivot['season'].astype(str)
+
+    # One-hot encode the 'season' column
+    season_dummies = pd.get_dummies(pivot['season'], drop_first=True)
+
+    # Concatenate one-hot encoded columns to the DataFrame
+    pivot = pd.concat([pivot, season_dummies], axis=1)
+
+    # Drop the original 'season' column
+    pivot.drop(columns=['season'], inplace=True)
+
+    season_columns = ['spring', 'summer', 'winter']
+    pivot[season_columns] = pivot[season_columns].astype(int)
+
+    # Extract day of the week and create 'weekend' column, replacing True/False with 1/0
+    pivot['day_of_week'] = pivot['Date'].dt.dayofweek
+    pivot['is_weekend'] = pivot['day_of_week'].isin([5, 6]).astype(int)
+
+    # Extract 'Country' feature from the 'concatenated' column
+    #pivot['Country'] = pivot['concatenated'].str[:-4]
 
     pivot.to_csv('../data/final_data.csv', index=False)
     print('=====================================')
@@ -156,12 +162,10 @@ def further_processing(df):
     
     return pivot
 
-
 def main():
     folder_path = '../data/raw_data/'
     data = read_and_concatenate(folder_path)
     pivot = further_processing(data)
-
 
 if __name__ == "__main__":
     main()
