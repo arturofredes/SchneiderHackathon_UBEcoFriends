@@ -104,13 +104,11 @@ def further_processing(df):
         aggfunc='sum'
     )
 
-    pivot = pivot.reset_index()
 
-    # Replace zeros with NaN
     pivot.replace(0, np.nan, inplace=True)
-
     # Drop rows where all elements are NaN
     pivot.dropna(how='all', inplace=True)
+    pivot = pivot.reset_index()
 
     pivot['Date'] = pd.to_datetime(pivot['Date'])
     pivot = pivot[pivot['Date'].dt.year == 2022]
