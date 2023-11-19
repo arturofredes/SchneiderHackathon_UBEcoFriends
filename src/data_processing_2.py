@@ -22,8 +22,8 @@ def read_and_concatenate(folder_path):
     list_files = [file for file in os.listdir(folder_path) if file!='test.csv']
     for file in list_files:
         if file.endswith('.csv'):
-            print('---------------------------------')
-            print(file)
+            # print('---------------------------------')
+            # print(file)
             file_path = os.path.join(folder_path, file)
             
 
@@ -44,7 +44,10 @@ def read_and_concatenate(folder_path):
                 df['Load'].fillna(0, inplace=True)
                 load_dataframes.append(df)
 
-           
+    print('=====================================')
+    print('Read all files in the raw_data folder')   
+    print('=====================================')
+
     # Concatenate DataFrames vertically
     gen_concatenated = pd.concat(gen_dataframes, axis=0, ignore_index=True)
     load_concatenated = pd.concat(load_dataframes, axis=0, ignore_index=True)
@@ -52,11 +55,18 @@ def read_and_concatenate(folder_path):
     # Combine 'gen' and 'load' DataFrames
     combined_dataframe = pd.concat([gen_concatenated, load_concatenated], axis=0, ignore_index=True)
 
+    print('=====================================')
+    print('Combined all data frames')   
+    print('=====================================')
+
     return combined_dataframe
 
 
 def further_processing(df):
     # change date format
+    print('=====================================')
+    print('Further processing')   
+    print('=====================================')
     df['StartTime'] = pd.to_datetime(df['StartTime'].str.replace('\+00:00Z', '', regex=True)).dt.strftime('%Y-%m-%d %H:%M:%S')
     df['EndTime'] = pd.to_datetime(df['EndTime'].str.replace('\+00:00Z', '', regex=True)).dt.strftime('%Y-%m-%d %H:%M:%S')
     df['StartTime'] = pd.to_datetime(df['StartTime'])
@@ -104,6 +114,11 @@ def further_processing(df):
     #pivot=pivot.reset_index()
     pivot['Date'] = pd.to_datetime(pivot['Date'])
     pivot = pivot[pivot['Date'].dt.year == 2022]
+
+    pivot.to_csv('../data/final_data.csv')
+    print('=====================================')
+    print('Pivot df saved to final_data')   
+    print('=====================================')
     
     return pivot
 
@@ -111,6 +126,7 @@ def further_processing(df):
 def main():
     folder_path = '../data/raw_data/'
     data = read_and_concatenate(folder_path)
+    pivot = further_processing(data)
 
 
 if __name__ == "__main__":
