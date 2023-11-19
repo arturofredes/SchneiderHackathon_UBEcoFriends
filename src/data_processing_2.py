@@ -60,11 +60,15 @@ def read_and_concatenate(folder_path):
 
     return combined_dataframe
 
+import pandas as pd
+import numpy as np
+
 def further_processing(df):
-    # change date format
     print('=====================================')
     print('Further processing')   
     print('=====================================')
+
+    # change date format
     df['StartTime'] = pd.to_datetime(df['StartTime'].str.replace('\+00:00Z', '', regex=True)).dt.strftime('%Y-%m-%d %H:%M:%S')
     df['EndTime'] = pd.to_datetime(df['EndTime'].str.replace('\+00:00Z', '', regex=True)).dt.strftime('%Y-%m-%d %H:%M:%S')
     df['StartTime'] = pd.to_datetime(df['StartTime'])
@@ -96,11 +100,14 @@ def further_processing(df):
     aggregated_data = df.groupby(['AreaID', 'gen/load', 'Date', 'Hour'])['power'].sum().reset_index()
     aggregated_data['concatenated'] = aggregated_data['AreaID']  + aggregated_data['gen/load']
 
+    # Extract country from the 'concatenated' column
+    aggregated_data['Country'] = aggregated_data['concatenated'].str[:-4]
+
     pivot = aggregated_data.pivot_table(
-    index=['Date', 'Hour'],
-    columns=['concatenated'],
-    values='power',
-    aggfunc='sum'
+        index=['Date', 'Hour'],
+        columns=['concatenated'],
+        values='power',
+        aggfunc='sum'
     )
 
     # Replace zeros with NaN
@@ -136,7 +143,9 @@ def further_processing(df):
     pivot['day_of_week'] = pivot['Date'].dt.dayofweek
     pivot['is_weekend'] = pd.get_dummies(pivot['day_of_week'].isin([5, 6]).astype(int), drop_first=True)
 
-    #pivot=pivot.reset_index()
+    # Extract 'Country' feature from the 'concatenated' column
+    pivot['Country'] = pivot['concatenated'].str[:-4]
+
     pivot['Date'] = pd.to_datetime(pivot['Date'])
     pivot = pivot[pivot['Date'].dt.year == 2022]
 
