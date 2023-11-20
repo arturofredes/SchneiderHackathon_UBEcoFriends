@@ -121,21 +121,22 @@ def further_processing(df):
 
 
     # Map column names to numbers
-    column_to_number = {
-        'HU_surplus': 0,
-        'IT_surplus': 1,
-        'PO_surplus': 2,
-        'SP_surplus': 3,
-        'DE_surplus': 4,
-        'DK_surplus': 5,
-        'SE_surplus': 6,
-        'NE_surplus': 7
+    labels_countries = {
+        'SP_surplus': 0, # Spain
+        'UK_surplus': 1, # United Kingdom
+        'DE_surplus': 2, # Germany
+        'DK_surplus': 3, # Denmark
+        'HU_surplus': 5, # Hungary
+        'SE_surplus': 4, # Sweden
+        'IT_surplus': 6, # Italy
+        'PO_surplus': 7, # Poland
+        'NL_surplus': 8 # Netherlands
     }
 
-
+    
     # Find the column with the maximum value for each row and map it to the corresponding number
     pivot['label'] = pivot[['HU_surplus', 'IT_surplus', 'PO_surplus', 'SP_surplus', 
-                    'DE_surplus', 'DK_surplus', 'SE_surplus', 'NE_surplus']].idxmax(axis=1).map(column_to_number)
+                    'DE_surplus', 'DK_surplus', 'SE_surplus', 'NE_surplus']].idxmax(axis=1).map(labels_countries)
 
 
     # Define European dates for seasons
