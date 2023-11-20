@@ -115,6 +115,29 @@ def further_processing(df):
     pivot['Date'] = pd.to_datetime(pivot['Date'])
     pivot = pivot[pivot['Date'].dt.year == 2022]
 
+    #Add surpluses columns
+    for country in ['HU','IT','PO','SP','DE','DK','SE','NE']:
+        pivot[country+'_surplus']=pivot[country+'gen']-pivot[country+'load']
+
+
+    # Map column names to numbers
+    column_to_number = {
+        'HU_surplus': 0,
+        'IT_surplus': 1,
+        'PO_surplus': 2,
+        'SP_surplus': 3,
+        'DE_surplus': 4,
+        'DK_surplus': 5,
+        'SE_surplus': 6,
+        'NE_surplus': 7
+    }
+
+
+    # Find the column with the maximum value for each row and map it to the corresponding number
+    pivot['label'] = pivot[['HU_surplus', 'IT_surplus', 'PO_surplus', 'SP_surplus', 
+                    'DE_surplus', 'DK_surplus', 'SE_surplus', 'NE_surplus']].idxmax(axis=1).map(column_to_number)
+
+
     # Define European dates for seasons
     spring_start = pd.to_datetime('2022-03-21')
     summer_start = pd.to_datetime('2022-06-21')
@@ -154,6 +177,9 @@ def further_processing(df):
 
     # Extract 'Country' feature from the 'concatenated' column
     #pivot['Country'] = pivot['concatenated'].str[:-4]
+
+
+    
 
     pivot.to_csv('../data/final_data.csv', index=False)
     print('=====================================')
