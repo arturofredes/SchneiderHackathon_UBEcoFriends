@@ -17,7 +17,6 @@ from tensorflow.keras.models import load_model, save_model
 
 def load_data(file_path):
     # TODO: Load processed data from CSV file
-    file_path = '../data/final_data.csv'
 
     df = pd.read_csv(file_path)
     df.interpolate(method='linear', limit_direction='both', inplace=True)
@@ -146,13 +145,13 @@ def save_model(model, model_path):
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Model training script for Energy Forecasting Hackathon')
     parser.add_argument(
-        '--input_file', 
+        '--file_path', 
         type=str, 
         default='data/processed_data.csv', 
         help='Path to the processed data file to train the model'
     )
     parser.add_argument(
-        '--model_file', 
+        '--model_path', 
         type=str, 
         default='models/model.pkl', 
         help='Path to save the trained model'
@@ -161,9 +160,9 @@ def parse_arguments():
 
 
 
-def main(input_file, model_file):
-
-    df = load_data(input_file)
+def main(file_path, model_path):
+    file_path = '../data/final_data.csv'
+    df = load_data(file_path)
     print('=========================================')
     print('File correctly loaded')
     print('=========================================')
@@ -234,8 +233,8 @@ def main(input_file, model_file):
     print('=========================================')
     print('Saving Model')
     print('=========================================')
-    model_file = os.path.join('..', 'models', 'model_adri.h5')
-    save_model(model, model_file)
+    model_path = os.path.join('..', 'models', 'model_adri.h5')
+    save_model(model, model_path)
 
 if __name__ == "__main__":
     args = parse_arguments()

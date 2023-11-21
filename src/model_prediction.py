@@ -1,5 +1,6 @@
 import pandas as pd
 import argparse
+import numpy as np
 
 def load_data(file_path):
     # TODO: Load test data from CSV file
@@ -7,11 +8,19 @@ def load_data(file_path):
 
 def load_model(model_path):
     # TODO: Load the trained model
+    loaded_model = load_model(model_path)
     return model
 
 def make_predictions(df, model):
     # TODO: Use the model to make predictions on the test data
-    return predictions
+
+    predictions = model.predict(sequences_test)
+    predicted_labels = np.argmax(predictions, axis=1)
+    result_dict = {"target": {}}
+    for i, label in enumerate(predicted_labels):
+        result_dict["target"][str(i + 1)] = int(label)
+
+    return result_dict
 
 def save_predictions(predictions, predictions_file):
     # TODO: Save predictions to a JSON file
