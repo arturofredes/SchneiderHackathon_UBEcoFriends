@@ -1,20 +1,44 @@
 import pandas as pd
 import argparse
+import numpy as np
+import json
+from model_training import *
 
 def load_data(file_path):
-    # TODO: Load test data from CSV file
+    # TODO: Load processed data from CSV file
+
+    df = pd.read_csv(file_path)
+    df.interpolate(method='linear', limit_direction='both', inplace=True)
+    
     return df
 
 def load_model(model_path):
     # TODO: Load the trained model
-    return model
+    loaded_model = load_model(model_path)
+    return loaded_model
 
 def make_predictions(df, model):
     # TODO: Use the model to make predictions on the test data
-    return predictions
 
-def save_predictions(predictions, predictions_file):
+
+    predictions = model.predict(sequences_test)
+    predicted_labels = np.argmax(predictions, axis=1)
+    result_dict = {"target": {}}
+    for i, label in enumerate(predicted_labels):
+        result_dict["target"][str(i + 1)] = int(label)
+
+    return result_dict
+
+
+def save_predictions(result_dict, json_file_path):
     # TODO: Save predictions to a JSON file
+
+    # Save the dictionary as JSON
+    with open(json_file_path, 'w') as json_file:
+        json.dump(result_dict, json_file)
+
+    print(f"Result dictionary saved to {json_file_path}")
+
     pass
 
 def parse_arguments():
@@ -39,8 +63,8 @@ def parse_arguments():
     )
     return parser.parse_args()
 
-def main(input_file, model_file, output_file):
-    df = load_data(input_file)
+def main(file_path, model_file, output_file):
+    df = load_data(file_path)
     model = load_model(model_file)
     predictions = make_predictions(df, model)
     save_predictions(predictions, output_file)
