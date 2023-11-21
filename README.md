@@ -40,6 +40,8 @@ python model_training.py
 The model is a LSTM neural network which predicts the country that will have the biggest surplus.
 
 We also tried training a different model for each country and predict the surplus using LSTM and different features. This did not work as well. The notebook LSTM_predicting_surplus.ipynb contains our exploration of this method.
+
+Another approach we took was using ARIMA and SARIMA, which we also could not make work. (testing ARIMA_SARIMA.ipynb)
 ### Predictions
 
 To get the predictions run:
@@ -56,7 +58,7 @@ F1:  1:  0.9577748468869401
 In conclusion, our model does not beat the baseline so it is not useful.
 ## Authors and Acknowledgements
 
-Thanks to the NUWE and Scheider Electric teams for hosting this event
+Thanks to the NUWE and Scheider Electric teams for hosting this event. WE had a lot of fun even though we could not make the model work :)
 
 - Adriana Álvaro ([@adrianaalvaro](https://github.com/adrianaalvaro))
 - Madison Chester ([@madisonechester](https://github.com/madisonechester))
