@@ -7,20 +7,31 @@ from model_training import *
 def load_data(file_path):
     # TODO: Load processed data from CSV file
 
-    df = pd.read_csv(file_path)
-    df.interpolate(method='linear', limit_direction='both', inplace=True)
+    scaled_df_test = pd.read_csv(file_path)
+    scaled_df_test.interpolate(method='linear', limit_direction='both', inplace=True)
     
-    return df
+    return scaled_df_test
 
 def load_model(model_path):
     # TODO: Load the trained model
     loaded_model = load_model(model_path)
     return loaded_model
 
-def make_predictions(df, model):
+def make_predictions(scaled_df_test, model):
     # TODO: Use the model to make predictions on the test data
 
+    features = ['Hour', 'spring', 'summer', 'winter', 'day_of_week', 'is_weekend',
+        'DEgen', 'DKgen',  'HUgen', 'ITgen', 'NEgen',  'POgen', 'SEgen', 'SPgen',
+        'DEload', 'DKload', 'HUload', 'ITload', 'NEload', 'POload', 'SEload', 'SPload', 
+        'DE_surplus',  'DK_surplus', 'HU_surplus', 'IT_surplus', 'NE_surplus', 'PO_surplus', 'SE_surplus', 'SP_surplus'  
+    ]
 
+    num_features = len(features)
+    label_column = 'label'
+    window = 48
+
+    X_test, y_test = scaled_df_test[features].values, scaled_df_test[label_column].values
+    sequences_test, _ = create_sequences(X_test, y_test, window)
     predictions = model.predict(sequences_test)
     predicted_labels = np.argmax(predictions, axis=1)
     result_dict = {"target": {}}
@@ -64,9 +75,10 @@ def parse_arguments():
     return parser.parse_args()
 
 def main(file_path, model_file, output_file):
-    df = load_data(file_path)
+    file_path = '..\data\scaled_data\df_test.csv'
+    scaled_df_test = load_data(file_path)
     model = load_model(model_file)
-    predictions = make_predictions(df, model)
+    predictions = make_predictions(scaled_df_test, model)
     save_predictions(predictions, output_file)
 
 if __name__ == "__main__":

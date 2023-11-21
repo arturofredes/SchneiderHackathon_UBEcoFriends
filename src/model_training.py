@@ -23,7 +23,9 @@ def load_data(file_path):
     
     return df
 
-def saved_data(path)
+def save_df(df, file_path):
+    df.to_csv(file_path)
+    pass
 
 def train_val_test_df_split(perc, df):
 
@@ -59,7 +61,10 @@ def scale_data(features_to_scale, df_train, df_val, df_test):
     df_val[features_to_scale] = scaler.transform(df_val[features_to_scale])
     df_test[features_to_scale] = scaler.transform(df_test[features_to_scale])
 
-
+    save_df(df_train, os.path.join('..\data\scaled_data', 'df_train.csv'))
+    save_df(df_val, os.path.join('..\data\scaled_data', 'df_val.csv'))
+    save_df(df_test, os.path.join('..\data\scaled_data', 'df_test.csv'))
+    
     return df_train, df_val, df_test
 
 def create_sequences(X, y, window):
