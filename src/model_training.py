@@ -1,10 +1,12 @@
 import pandas as pd
 import os
 import matplotlib.pyplot as plt
-import seaborn as sns
 import pandas as pd
 import numpy as np
+import argparse
 from sklearn.preprocessing import MinMaxScaler
+import os
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense
 from tensorflow.keras.optimizers import Adam
@@ -12,7 +14,8 @@ from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.callbacks import LearningRateScheduler
 from tensorflow.keras.regularizers import l1
 from tensorflow.compat.v1 import keras
-from tensorflow.keras.models import load_model, save_model
+from tensorflow.keras.models import save_model
+from tensorflow.compat.v1.losses import sparse_softmax_cross_entropy
 
 
 def load_data(file_path):
@@ -145,22 +148,21 @@ def save_model(model, model_path):
     print(f'Saved Model in {model_path}')
     print('=========================================')
 
-    pass
 
 
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Model training script for Energy Forecasting Hackathon')
     parser.add_argument(
-        '--file_path', 
+        '--file_path',  
         type=str, 
-        default='data/processed_data.csv', 
+        default='..\data\final_data.csv', 
         help='Path to the processed data file to train the model'
     )
     parser.add_argument(
         '--model_path', 
         type=str, 
-        default='models/model.pkl', 
+        default='..\models\model_adri.h5', 
         help='Path to save the trained model'
     )
     return parser.parse_args()
@@ -242,7 +244,10 @@ def main(file_path, model_path):
     print('=========================================')
     model_path = os.path.join('..', 'models', 'model_adri.h5')
     save_model(model, model_path)
+    print('=========================================')
+    print(f'Model saved to {model_path}')
+    print('=========================================')
 
 if __name__ == "__main__":
     args = parse_arguments()
-    main(args.input_file, args.model_file)
+    main(args.file_path, args.model_path)

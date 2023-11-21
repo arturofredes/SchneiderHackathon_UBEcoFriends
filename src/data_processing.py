@@ -181,7 +181,7 @@ def further_processing(df):
 
 
     # handle missing data
-    pivot.interpolate(method='linear', limit_direction='both', inplace=True)
+    # pivot.interpolate(method='linear', limit_direction='both', inplace=True)
 
     pivot.to_csv('../data/final_data.csv', index=False)
     print('=====================================')

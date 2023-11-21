@@ -2,7 +2,9 @@ import pandas as pd
 import argparse
 import numpy as np
 import json
-from model_training import *
+from model_training import create_sequences
+from tensorflow.keras.models import load_model
+import os
 
 def load_data(file_path):
     # TODO: Load processed data from CSV file
@@ -12,10 +14,6 @@ def load_data(file_path):
     
     return scaled_df_test
 
-def load_model(model_path):
-    # TODO: Load the trained model
-    loaded_model = load_model(model_path)
-    return loaded_model
 
 def make_predictions(scaled_df_test, model):
     # TODO: Use the model to make predictions on the test data
@@ -48,7 +46,9 @@ def save_predictions(result_dict, json_file_path):
     with open(json_file_path, 'w') as json_file:
         json.dump(result_dict, json_file)
 
+    print('=========================================')
     print(f"Result dictionary saved to {json_file_path}")
+    print('=========================================')
 
     pass
 
@@ -57,27 +57,33 @@ def parse_arguments():
     parser.add_argument(
         '--input_file', 
         type=str, 
-        default='data/test_data.csv', 
+        default='..\data\scaled_data\df_test.csv', 
         help='Path to the test data file to make predictions'
     )
     parser.add_argument(
         '--model_file', 
         type=str, 
-        default='models/model.pkl',
+        default=os.path.join('..', 'models', 'model_adri.h5'),
         help='Path to the trained model file'
     )
     parser.add_argument(
         '--output_file', 
         type=str, 
-        default='predictions/predictions.json', 
+        default='..\predictions\predictions_adri.json', 
         help='Path to save the predictions'
     )
     return parser.parse_args()
 
-def main(file_path, model_file, output_file):
+def main(file_path, model_path, output_file):
     file_path = '..\data\scaled_data\df_test.csv'
     scaled_df_test = load_data(file_path)
-    model = load_model(model_file)
+    print('==============================')
+    print('Loaded scaled df_test')
+    print('==============================')
+    model = load_model(model_path)
+    print('==============================')
+    print('Loaded model df_test')
+    print('==============================')
     predictions = make_predictions(scaled_df_test, model)
     save_predictions(predictions, output_file)
 
