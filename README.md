@@ -10,8 +10,53 @@ pip install -r requirements.txt
 ```
 
 ## Usage
-To run this project
+### Data Ingestion
+To run this project first you should get the data from the ENTSO-E API.
+ ```
+ python data_ingestion.py
+ ``` 
+
+ This will download a lot of files of load and generation from different sources. The only generation sources that should be kept are those that come from green energy.
+ ["B01", "B09", "B10", "B11", "B12", "B13", "B15", "B16", "B18", "B19"].
+
+ Furthermore, to replicate our results, you should drop the data coming from the UK, that we discarded due to it having too many missing values.
+
+
+ ### Data Cleaning
+ To clean the data and resample everything to 1H interval and get the columns needed for training run:
+
+ ```
+ python data_processing.py
+ ```
+
+This will generate a final_data.csv
+
+### Model Training
+To train the model run:
+```
+python model_training.py
+```
+
+The model is a LSTM neural network which predicts the country that will have the biggest surplus.
+
+We also tried training a different model for each country and predict the surplus using LSTM and different features. This did not work as well. The notebook LSTM_predicting_surplus.ipynb contains our exploration of this method.
+### Predictions
+
+To get the predictions run:
+```
+model_prediction.py
+```
+
+Our final F1 score was: F1:  0.8090072352366647
+
+We chose a Baseline that was taking the last value as prediction. The F1 score of that is:
+
+F1:  1:  0.9577748468869401
+
+In conclusion, our model does not beat the baseline so it is not useful.
 ## Authors and Acknowledgements
+
+Thanks to the NUWE and Scheider Electric teams for hosting this event
 
 - Adriana Álvaro ([@adrianaalvaro](https://github.com/adrianaalvaro))
 - Madison Chester ([@madisonechester](https://github.com/madisonechester))

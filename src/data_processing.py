@@ -1,247 +1,199 @@
-import argparse
+import os 
 import pandas as pd
-from utils_2 import *
+import numpy as np
 
-def load_data(file_path):
-    # TODO: Load data from CSV file
-    df = pd.read_csv(file_path)
+def fill_area_code(df):
+
+    df['AreaID'].dropna(inplace=True)
+    cn_id = df['AreaID'][0]
+    #print(cn_id)
+    df['AreaID'] = cn_id
+    
     return df
-
-
-def clean_df(data, file_type):
-    if file_type == 'gen':
-        energy_val = 'quantity'
-    else:
-        energy_val = 'Load'
         
-    # Convert the timestamp columns to datetime format
-    data['StartTime'] = pd.to_datetime(data['StartTime'].str.replace('\+00:00Z', '', regex=True)).dt.strftime('%Y-%m-%d %H:%M:%S')
-    data['EndTime'] = pd.to_datetime(data['EndTime'].str.replace('\+00:00Z', '', regex=True)).dt.strftime('%Y-%m-%d %H:%M:%S')
-    data['StartTime'] = pd.to_datetime(data['StartTime'])
-    data['EndTime'] = pd.to_datetime(data['EndTime'])
-    
-    # Ensure the data is sorted by time
-    data = data.sort_values(by='StartTime')
-    
-    #cutoff_date = pd.Timestamp('2023-01-01')
-    #data = data[data['EndTime'] <= cutoff_date]
+def read_and_concatenate(folder_path):
+    # Lists to store DataFrames
+    gen_dataframes = []
+    load_dataframes = []
 
-    imputed_column = data[energy_val].copy()
-    missing_indices = imputed_column.index[imputed_column.isna()]
-
-    for i in missing_indices:
-        previous_value = imputed_column.iloc[i - 1] if i > 0 else None
-        next_value = imputed_column.iloc[i + 1] if i < len(imputed_column) - 1 else None
-
-        if pd.notna(previous_value) and pd.notna(next_value):
-            mean_value = (previous_value + next_value) / 2
-            imputed_column.iloc[i] = mean_value
-
-    data[energy_val] = imputed_column
-    # Create a new column 'hourly_time' to represent the hourly level
-    data['hourly_time'] = data['StartTime'].dt.floor('H')
-
-    unique_units = data['UnitName'].unique()
-    #print(unique_units)
-    if len(unique_units) == 1:
-        if file_type == 'gen':
-            # Resample the data to an hourly level, preserving all columns
-            data_resampled = data.set_index('StartTime').resample('1H').agg({
-                'EndTime': 'last',
-                'AreaID': 'first',
-                'UnitName': 'first',
-                'PsrType': 'first',
-                energy_val: 'sum',
-                'hourly_time': 'last'
-            }).reset_index()            
-
-        else:
-            # Resample the data to an hourly level, preserving all columns
-            data_resampled = data.set_index('StartTime').resample('1H').agg({
-                'EndTime': 'last',
-                'AreaID': 'first',
-                'UnitName': 'first',
-                energy_val: 'sum',
-                'hourly_time': 'last'
-            }).reset_index()
-
-       # data_resampled = data_resampled.groupby('StartTime')[energy_val].sum().reset_index()
-        return data_resampled
-    else:
-        print("Wrong")
-        return data
-    
-def cleaning_pipeline():
-    # raw_folder = '../data/raw_data/' 
-    raw_folder = 'data/raw_data/' 
-    countries = ['HU','IT','PO','SP','UK','DE','DK','SE','NE']
-
-    for country in countries:
-        print('======================================================')
-        print(country)
-        print('======================================================')
-        print('_____cleaning data_____')
-
-        # generation files
-        gen_files_paths = get_generation_files(country, data_folder = raw_folder)
-        print('Generation files to be cleaned: ', gen_files_paths)
-        for file_path in gen_files_paths:
-            gen_df = load_data(file_path)
-            gen_df = clean_df(gen_df, 'gen')
-            save_data(gen_df, (file_path.replace('raw_data', 'clean_data')).replace('.csv', '')+'_clean.csv')
-        print('cleaned generation files')
-
-        # load file
-        load_file_path = get_load_file(country, data_folder = raw_folder)
-        print('load file to be cleaned: ', load_file_path)
-        load_df = load_data(load_file_path)
-        load_df = clean_df(load_df, 'Load')
-
-        save_data(load_df, (load_file_path.replace('raw_data', 'clean_data')).replace('.csv', '')+'_clean.csv')
-
-    print('Cleaned data for all countries')
-
-
-def agregate_data_within_country():
-
-    start_time_array, end_time_array = get_hours_in_year()
-    countries = ['HU','IT','PO','SP','UK','DE','DK','SE','NE']
-
-    print('_____aggregating data_____')
-    # clean_folder = '../data/clean_data/'
-    clean_folder = 'data/clean_data/'
-
-    for country in countries:
-        print('======================================================')
-        print(country)
-        df_country_combined = pd.DataFrame(columns = ['StartTime','EndTime'])
-
-        # add each generation source
-        generation_files_path = get_generation_files(country, data_folder = clean_folder)
-        print('Data to be merged: ', generation_files_path)
-        for i, file_path in enumerate(generation_files_path):
-            clean_gen_df = pd.read_csv(file_path)
-            source_type = clean_gen_df['PsrType'][0]
-            # print(source_type)
-            new_quant_column = 'quantity_'+ source_type
-            clean_gen_df.rename(columns={'quantity': new_quant_column}, inplace=True)
-            clean_gen_df.drop(columns=['PsrType','UnitName', 'hourly_time', 'AreaID', 'EndTime'], inplace=True)
+    # Iterate over all files in the folder
+    list_files = [file for file in os.listdir(folder_path) if file!='test.csv']
+    for file in list_files:
+        if file.endswith('.csv'):
+            # print('---------------------------------')
+            # print(file)
+            file_path = os.path.join(folder_path, file)
             
-            
-            df_country_combined['StartTime'] = start_time_array
-            df_country_combined['EndTime'] = end_time_array
-            df_country_combined = df_country_combined.merge(clean_gen_df[['StartTime', new_quant_column]], how='left', on='StartTime')
+
+            # Read 'gen' files
+            if file.startswith('gen'):
+                df = pd.read_csv(file_path)
+                if file == 'gen_SP_B10.csv':
+                    df['AreaID'] = '10YES-REE------0'
+                df = fill_area_code(df)
+                df['quantity'].fillna(0, inplace=True)
+                gen_dataframes.append(df)
 
 
-        # Aggregate the quantity columns into a new column 'total_quantity'
-        df_country_combined['total_green_energy'] = df_country_combined.filter(like='quantity_').sum(axis=1)
+            # Read 'load' files
+            elif file.startswith('load'):
+                df = pd.read_csv(file_path)
+                df = fill_area_code(df)
+                df['Load'].fillna(0, inplace=True)
+                load_dataframes.append(df)
 
-        # add load column from the load file
-        load_file_path = get_load_file(country, clean_folder)
-        clean_load_df = pd.read_csv(load_file_path)
-        df_country_combined = df_country_combined.merge(clean_load_df[['StartTime', 'Load']], how='left', on='StartTime')
-        name_country_file = country + '_data' + '.csv'
+    print('=====================================')
+    print('Read all files in the raw_data folder')   
+    print('=====================================')
 
-        # final_folder = os.path.join('..','data','final_data')
-        final_folder = os.path.join('data','final_data')
-        df_country_combined.to_csv(os.path.join(final_folder, name_country_file), index=False)
+    # Concatenate DataFrames vertically
+    gen_concatenated = pd.concat(gen_dataframes, axis=0, ignore_index=True)
+    load_concatenated = pd.concat(load_dataframes, axis=0, ignore_index=True)
+
+    # Combine 'gen' and 'load' DataFrames
+    combined_dataframe = pd.concat([gen_concatenated, load_concatenated], axis=0, ignore_index=True)
+
+    print('=====================================')
+    print('Combined all data frames')   
+    print('=====================================')
+
+    return combined_dataframe
+
+def further_processing(df):
+    print('=====================================')
+    print('Further processing')   
+    print('=====================================')
+
+    # change date format
+    df['StartTime'] = pd.to_datetime(df['StartTime'].str.replace('\+00:00Z', '', regex=True)).dt.strftime('%Y-%m-%d %H:%M:%S')
+    df['EndTime'] = pd.to_datetime(df['EndTime'].str.replace('\+00:00Z', '', regex=True)).dt.strftime('%Y-%m-%d %H:%M:%S')
+    df['StartTime'] = pd.to_datetime(df['StartTime'])
+    df['EndTime'] = pd.to_datetime(df['EndTime'])
+
+    df['AreaID'] = df['AreaID'].replace({
+        '10YHU-MAVIR----U': 'HU',
+        '10YIT-GRTN-----B': 'IT',
+        '10YPL-AREA-----S': 'PO',
+        '10YES-REE------0': 'SP',
+        '10Y1001A1001A92E': 'UK',
+        '10Y1001A1001A83F': 'DE',
+        '10Y1001A1001A65H': 'DK',
+        '10YSE-1--------K': 'SE',
+        '10YNL----------L': 'NE'
+    })
+
+    df.fillna(0, inplace=True)
+    df['gen/load'] = 'load'
+    df['Load'] = df['Load'].fillna(0)
+    df.loc[df['Load']==0,'gen/load']='gen'
+    df['power'] = df['quantity'] + df['Load']
+    
+    # Extract date and hour
+    df['Date'] = df['StartTime'].dt.date
+    df['Hour'] = df['StartTime'].dt.hour
+
+    # aggregate data per country, load/gen, date and hour
+    aggregated_data = df.groupby(['AreaID', 'gen/load', 'Date', 'Hour'])['power'].sum().reset_index()
+    aggregated_data['concatenated'] = aggregated_data['AreaID']  + aggregated_data['gen/load']
 
 
-def agregate_data_among_countries():
-    final_folder = os.path.join('data','final_data')
-    print('_____Combining datasets of all countries_____')
-    # final_df = pd.DataFrame()
-    final_files = os.listdir(final_folder)
-    final_files = [file for file in final_files if file!='data_merged.csv']
+    pivot = aggregated_data.pivot_table(
+        index=['Date', 'Hour'],
+        columns=['concatenated'],
+        values='power',
+        aggfunc='sum'
+    )
 
-    for i, file_name in enumerate(final_files):
-        df_country = pd.read_csv(os.path.join(final_folder, file_name))
-        country = file_name[:2]
-        # print(country)
-        if i == 0:
-            final_df = df_country[['StartTime', 'EndTime',  'total_green_energy', 'Load']].copy()
-            final_df.rename(columns={
-                'total_green_energy': 'green_energy_'+ country,
-                'Load': country + '_Load'
-            },inplace=True)
-        else:
-            #combined_df = pd.concat([combined_df, df_country[['total_green_energy', 'Load']]], axis=1)
-            final_df = final_df.merge(df_country[['StartTime', 'total_green_energy' , 'Load']], how='left', on='StartTime')
-            final_df.rename(columns={
-                'total_green_energy': 'green_energy_'+ country,
-                'Load': country + '_Load'
-            },inplace=True)
 
-    path = os.path.join(final_folder, 'data_merged.csv')
-    final_df.to_csv(path, index=False)
-    print(f'final dataset saved to {path}')
+    pivot.replace(0, np.nan, inplace=True)
+    # Drop rows where all elements are NaN
+    pivot.dropna(how='all', inplace=True)
+    pivot = pivot.reset_index()
 
-    return final_df
 
-def extract_features():
-    folder_path = 'final_folder'
-    filename = 'data_merged.csv'
-    file_path = os.path.join(folder_path, filename)
-    data = pd.read_csv(file_path)
 
-    print('_____CExtracting features_____')
+    pivot['Date'] = pd.to_datetime(pivot['Date'])
+    pivot = pivot[pivot['Date'].dt.year == 2022]
 
-    # Extract hour of the day
-    data['hour_of_day'] = data['StartTime'].dt.hour
+    #Add surpluses columns
+    for country in ['HU','IT','PO','SP','DE','DK','SE','NE']:
+        pivot[country+'_surplus']=pivot[country+'gen']-pivot[country+'load']
+
+
+    # Map column names to numbers
+    labels_countries = {
+        'SP_surplus': 0, # Spain
+        'UK_surplus': 1, # United Kingdom
+        'DE_surplus': 2, # Germany
+        'DK_surplus': 3, # Denmark
+        'HU_surplus': 5, # Hungary
+        'SE_surplus': 4, # Sweden
+        'IT_surplus': 6, # Italy
+        'PO_surplus': 7, # Poland
+        'NL_surplus': 8 # Netherlands
+    }
+
+    
+    # Find the column with the maximum value for each row and map it to the corresponding number
+    pivot['label'] = pivot[['HU_surplus', 'IT_surplus', 'PO_surplus', 'SP_surplus', 
+                    'DE_surplus', 'DK_surplus', 'SE_surplus', 'NE_surplus']].idxmax(axis=1).map(labels_countries)
+
 
     # Define European dates for seasons
-    spring_start = pd.to_datetime('2023-03-21')
-    summer_start = pd.to_datetime('2023-06-21')
-    autumn_start = pd.to_datetime('2023-09-22')
-    winter_start = pd.to_datetime('2023-12-21')
+    spring_start = pd.to_datetime('2022-03-21')
+    summer_start = pd.to_datetime('2022-06-21')
+    autumn_start = pd.to_datetime('2022-09-22')
+    winter_start = pd.to_datetime('2022-12-21')
 
     # Create a new column 'season' based on the defined seasons
-    data['season'] = pd.cut(
-        data['StartTime'],
-        bins=[pd.Timestamp.min, spring_start, summer_start, autumn_start, winter_start, pd.Timestamp.max],
-        labels=['winter', 'spring', 'summer', 'autumn', 'winter'],
-        right=False
-    )
+    pivot['season'] = 'winter'  # Default to winter
+
+    # Set conditions for other seasons
+    spring_condition = (pivot['Date'] >= spring_start) & (pivot['Date'] < summer_start)
+    summer_condition = (pivot['Date'] >= summer_start) & (pivot['Date'] < autumn_start)
+    autumn_condition = (pivot['Date'] >= autumn_start) & (pivot['Date'] < winter_start)
+
+    # Update 'season' based on conditions
+    pivot.loc[spring_condition, 'season'] = 'spring'
+    pivot.loc[summer_condition, 'season'] = 'summer'
+    pivot.loc[autumn_condition, 'season'] = 'autumn'
+
+    pivot['season'] = pivot['season'].astype(str)
 
     # One-hot encode the 'season' column
-    data = pd.get_dummies(data, columns=['season'], drop_first=True)
+    season_dummies = pd.get_dummies(pivot['season'], drop_first=True)
 
-    # Extract day of the week and create 'weekend' column
-    data['day_of_week'] = data['StartTime'].dt.dayofweek
-    data['is_weekend'] = pd.get_dummies(data['day_of_week'].isin([5, 6]).astype(int), drop_first=True)
+    # Concatenate one-hot encoded columns to the DataFrame
+    pivot = pd.concat([pivot, season_dummies], axis=1)
 
-    output_path = os.path.join(folder_path, 'data_extracted.csv')
-    data.to_csv(output_path, index=False)
+    # Drop the original 'season' column
+    pivot.drop(columns=['season'], inplace=True)
 
-    return data
+    season_columns = ['spring', 'summer', 'winter']
+    pivot[season_columns] = pivot[season_columns].astype(int)
 
-def save_data(df, output_file):
-    df.to_csv(output_file, index=False)
-    pass
+    # Extract day of the week and create 'weekend' column, replacing True/False with 1/0
+    pivot['day_of_week'] = pivot['Date'].dt.dayofweek
+    pivot['is_weekend'] = pivot['day_of_week'].isin([5, 6]).astype(int)
 
-def parse_arguments():
-    parser = argparse.ArgumentParser(description='Data processing script for Energy Forecasting Hackathon')
-    parser.add_argument(
-        '--input_file',
-        type=str,
-        default='data/raw_data.csv',
-        help='Path to the raw data file to process'
-    )
-    parser.add_argument(
-        '--output_file', 
-        type=str, 
-        default='data/processed_data.csv', 
-        help='Path to save the processed data'
-    )
-    return parser.parse_args()
+    # Extract 'Country' feature from the 'concatenated' column
+    #pivot['Country'] = pivot['concatenated'].str[:-4]
+
+
+    # handle missing data
+    pivot.interpolate(method='linear', limit_direction='both', inplace=True)
+
+    pivot.to_csv('../data/final_data.csv', index=False)
+    print('=====================================')
+    print('Pivot df saved to final_data')   
+    print('=====================================')
+    
+    return pivot
 
 def main():
-
-    cleaning_pipeline()
-    agregate_data_within_country()
-    agregate_data_among_countries()
-    extract_features()
+    folder_path = '../data/raw_data/'
+    data = read_and_concatenate(folder_path)
+    pivot = further_processing(data)
 
 if __name__ == "__main__":
-    args = parse_arguments()
     main()
