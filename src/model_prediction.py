@@ -82,7 +82,7 @@ def main(file_path, model_path, output_file):
     print('==============================')
     model = load_model(model_path)
     print('==============================')
-    print('Loaded model df_test')
+    print('Loaded model')
     print('==============================')
     predictions = make_predictions(scaled_df_test, model)
     save_predictions(predictions, output_file)
